@@ -11,11 +11,11 @@ Each phase is a separable module (code, data and write-up), so the project can l
 - [x] 0.3 CMake skeleton with optional CUDA and MPI detection and a `scripts/build.sh`. Done when a CPU-only build succeeds.
 - [x] 0.4 Vendor `stb_image` and `stb_image_write` under `third_party/`. Done when an image loads and saves.
 - [x] 0.5 Generate 4 synthetic test images (2x 4K, 2x 8K) via scripts/gen_images.py and fill `data/images/images.csv`. Done when the files exist with sources recorded.
-- [ ] 0.6 Initial commit and push of the skeleton.
+- [x] 0.6 Initial commit and push of the skeleton.
 
 ## Phase 1: Common core and serial baseline (Week 1)
 
-- [ ] 1.1 `Image` and `Filter` types, image loader, grayscale float conversion.
+- [x] 1.1 `Image` and `Filter` types, image loader, grayscale float conversion.
 - [ ] 1.2 Filter generator: Gaussian, Sobel, Box for odd K from 3 to 15.
 - [ ] 1.3 Serial convolution with zero-padding, built `-O2` with no vectorisation. Border mode switch for clamp-to-edge.
 - [ ] 1.4 Validator: max-abs and RMS error, pass at < 1e-4.

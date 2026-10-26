@@ -11,13 +11,17 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 
 find_package(OpenMP REQUIRED)
 
-add_library(convox_common INTERFACE)
-target_include_directories(convox_common INTERFACE
+add_library(convox_common STATIC src/common/image.cpp)
+target_include_directories(convox_common PUBLIC
   ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/third_party)
-target_link_libraries(convox_common INTERFACE OpenMP::OpenMP_CXX)
+target_link_libraries(convox_common PUBLIC OpenMP::OpenMP_CXX)
 
 add_executable(convox src/common/main.cpp)
 target_link_libraries(convox PRIVATE convox_common)
+
+# Test executables, built on demand with `cmake --build build --target test_image`.
+add_executable(test_image EXCLUDE_FROM_ALL tests/test_image.cpp)
+target_link_libraries(test_image PRIVATE convox_common)
 
 # Optional CUDA
 include(CheckLanguage)
