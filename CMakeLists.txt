@@ -11,7 +11,8 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 
 find_package(OpenMP REQUIRED)
 
-add_library(convox_common STATIC src/common/image.cpp src/common/filter.cpp)
+add_library(convox_common STATIC src/common/image.cpp src/common/filter.cpp
+  src/common/validator.cpp)
 target_include_directories(convox_common PUBLIC
   ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/third_party)
 target_link_libraries(convox_common PUBLIC OpenMP::OpenMP_CXX)
@@ -35,6 +36,8 @@ add_executable(test_image EXCLUDE_FROM_ALL tests/test_image.cpp)
 target_link_libraries(test_image PRIVATE convox_common)
 add_executable(test_filter EXCLUDE_FROM_ALL tests/test_filter.cpp)
 target_link_libraries(test_filter PRIVATE convox_common)
+add_executable(test_validator EXCLUDE_FROM_ALL tests/test_validator.cpp)
+target_link_libraries(test_validator PRIVATE convox_common)
 add_executable(test_serial EXCLUDE_FROM_ALL tests/test_serial.cpp)
 target_link_libraries(test_serial PRIVATE convox_serial)
 

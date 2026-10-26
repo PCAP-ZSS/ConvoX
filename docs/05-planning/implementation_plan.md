@@ -18,7 +18,7 @@ Each phase is a separable module (code, data and write-up), so the project can l
 - [x] 1.1 `Image` and `Filter` types, image loader, grayscale float conversion.
 - [x] 1.2 Filter generator: Gaussian, Sobel, Box for odd K from 3 to 15.
 - [x] 1.3 Serial convolution with zero-padding, built `-O2` with no vectorisation. Border mode switch for clamp-to-edge.
-- [ ] 1.4 Validator: max-abs and RMS error, pass at < 1e-4.
+- [x] 1.4 Validator: max-abs and RMS error, pass at < 1e-4.
 - [ ] 1.5 Timing harness: warm-up plus 10 reps, median, `steady_clock`.
 - [ ] 1.6 CSV writer for `results.csv` and `reps.csv`, and environment capture.
 - [ ] 1.7 CLI: `convox run` and `convox info` for the serial path, with `--save-image`.
