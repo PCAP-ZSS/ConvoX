@@ -12,6 +12,6 @@ expect 2 "even K rejected"            ./build/convox run -i $img -k 8 --no-csv
 expect 2 "missing image rejected"     ./build/convox run -i nope.png --no-csv
 expect 2 "missing --image rejected"   ./build/convox run --no-csv
 expect 2 "no subcommand"              ./build/convox
-expect 3 "unavailable impl"           ./build/convox run --impl cuda-tiled -i $img --no-csv
+expect 3 "unavailable impl"           ./build/convox run --impl no-such-impl -i $img --no-csv
 expect 0 "serial run passes"          ./build/convox run -i $img -k 3 --reps 1 --no-csv
 exit $fail

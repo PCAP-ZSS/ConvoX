@@ -47,14 +47,14 @@ Each phase is a separable module (code, data and write-up), so the project can l
 - [x] 4.1 `cuda-const`: filter in `__constant__` memory. Validate, then measure on its own.
 - [x] 4.2 `cuda-tiled`: shared-memory tile with halo, `__syncthreads()`, compute from shared memory. Validate.
 - [x] 4.3 Edge cases: image sizes not divisible by the block, K=15 at T=32 shared-memory footprint.
-- [ ] 4.4 Nsight Compute runs for naive vs tiled: DRAM throughput, occupancy. Record in the CSV or report. BLOCKED: `ncu` fails with ERR_NVGPUCTRPERM; needs Windows NVIDIA Control Panel > Desktop > Enable Developer Settings > Manage GPU Performance Counters > allow all users. Fallback: theoretical occupancy and analytical traffic (already recorded).
+- [x] 4.4 Nsight Compute runs for naive vs tiled: DRAM throughput, occupancy. Record in the CSV or report. Done with ncu after enabling GPU counters: results/raw/ncu_metrics.csv.
 - Done when: three CUDA variants all pass validation and the profiler numbers are saved.
 
 ## Phase 5: Sweep and analysis (Weeks 5-6)
 
 - [x] 5.1 `convox sweep` and `benchmarks/sweep.conf` expanding the full matrix.
 - [x] 5.2 `scripts/run_all.sh`: build, sweep and plots in one command.
-- [ ] 5.3 Full benchmark run to produce the final `results.csv`.
+- [x] 5.3 Full benchmark run to produce the final `results.csv`.
 - [x] 5.4 `scripts/summary.py` terminal tables.
 - [x] 5.5 `analysis/plots.py` for the five required plots, with `--show`.
 - [x] 5.6 `analysis/amdahl.py`: measured serial fraction, predicted ceiling vs observed plateau.
@@ -63,18 +63,18 @@ Each phase is a separable module (code, data and write-up), so the project can l
 
 ## Phase 6: MPI extension (Week 5, optional)
 
-- [ ] 6.1 Strip decomposition with `H/N + 2R` rows and halo handling at the edges.
-- [ ] 6.2 `MPI_Scatterv` and `MPI_Gatherv` driver around the OpenMP kernel.
-- [ ] 6.3 Hook the CUDA kernel in as the local kernel.
-- [ ] 6.4 Validate against serial and record timing for 2 and 4 ranks.
+- [x] 6.1 Strip decomposition with `H/N + 2R` rows and halo handling at the edges.
+- [x] 6.2 `MPI_Scatterv` and `MPI_Gatherv` driver around the OpenMP kernel.
+- [x] 6.3 Hook the CUDA kernel in as the local kernel.
+- [x] 6.4 Validate against serial and record timing for 2 and 4 ranks.
 - Done when: gathered output matches serial. If time is short, drop this phase and note it as future work.
 
 ## Phase 7: Report and presentation (Week 6)
 
-- [ ] 7.1 Report sections: methodology, setup, results, discussion, conclusion.
-- [ ] 7.2 Interpret each plot, covering the bandwidth plateau, the block-size sweet spot, the tiling gain growing with K, the transfer cost and the Amdahl gap.
-- [ ] 7.3 Final README with build and run instructions.
-- [ ] 7.4 Divide the work three ways and write `docs/06-presentation/work_split.md`.
+- [x] 7.1 Report sections: methodology, setup, results, discussion, conclusion.
+- [x] 7.2 Interpret each plot, covering the bandwidth plateau, the block-size sweet spot, the tiling gain growing with K, the transfer cost and the Amdahl gap.
+- [x] 7.3 Final README with build and run instructions.
+- [x] 7.4 Divide the work three ways and write `docs/06-presentation/work_split.md`.
 - [ ] 7.5 Slides and a rehearsal.
 
 ## Risks to watch

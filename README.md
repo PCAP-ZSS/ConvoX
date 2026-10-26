@@ -47,7 +47,7 @@ python3 scripts/gen_images.py  # data/images/img01_4k ... img04_8k plus images.c
 ./build/convox run --impl omp        -i data/images/img03_8k.png -k 7 --threads 8 --schedule static
 ./build/convox run --impl cuda-tiled -i data/images/img03_8k.png -k 7 --block 16x16
 ./build/convox sweep --dry-run                      # size of the full benchmark matrix
-./build/convox sweep                                # run it (long); appends to results/raw/
+./build/convox sweep                                # run it (long); appends to results/raw/; add --resume after an interruption
 ```
 
 `run` prints one line per configuration and appends a row to `results/raw/results.csv`. Exit codes:
@@ -68,6 +68,14 @@ python3 scripts/summary.py --image img03_8k --k 7   # terminal table
 python3 analysis/plots.py --show                    # PNG + PDF plots in results/plots/
 python3 analysis/amdahl.py                          # Amdahl prediction vs measurement
 bash scripts/visual_check.sh                        # original vs Gaussian / Sobel / box
+```
+
+MPI (single node; `--bind-to none` stops Open MPI pinning each rank to one core):
+
+```bash
+mpirun --oversubscribe --bind-to none -np 4 ./build/convox_mpi -i data/images/img03_8k.png -k 7 --local omp
+bash scripts/check_mpi.sh                       # every rank count and local kernel vs serial
+python3 analysis/ncu_profile.py                 # DRAM / L2 / L1 traffic per CUDA kernel (needs GPU counters)
 ```
 
 Border handling is zero-padding by default. For clamp-to-edge, configure with

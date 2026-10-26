@@ -56,7 +56,7 @@ def plot_omp_scaling(df, image, out, raw, written):
     ax.set_xlabel("OpenMP threads")
     ax.set_ylabel("speedup over serial (x)")
     ax.set_xticks(threads)
-    ax.set_title(f"OpenMP scaling saturates well below ideal ({image}); K={lo[2]} peaks at {lo[0]:.1f}x with {lo[1]} threads")
+    ax.set_title(f"OpenMP scaling saturates well below ideal ({image})\nweakest case K={lo[2]} peaks at {lo[0]:.1f}x with {lo[1]} threads")
     ax.legend(ncol=2, fontsize=8)
     finish(fig, "omp_scaling", out, raw, written)
 
