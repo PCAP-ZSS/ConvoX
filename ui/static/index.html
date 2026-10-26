@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ConvoX Demo</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header class="top">
+  <div>
+    <h1>ConvoX</h1>
+    <p class="sub">The same image filter run on one CPU core, many cores and a GPU</p>
+  </div>
+  <div id="machine" class="chips"></div>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button data-tab="live" class="active" role="tab">Live demo</button>
+  <button data-tab="bench" role="tab">Full benchmark results</button>
+  <button data-tab="how" role="tab">How it works</button>
+</nav>
+
+<main>
+
+<!-- ============================================================ Live demo -->
+<section id="tab-live" class="tab active">
+  <div class="layout">
+
+    <form id="controls" class="card controls" autocomplete="off">
+      <div class="field">
+        <label class="title">1. Image</label>
+        <div class="seg" id="source-seg">
+          <button type="button" data-mode="sample" class="active">Sample</button>
+          <button type="button" data-mode="upload">Upload</button>
+        </div>
+        <div id="sample-box" style="margin-top:8px">
+          <select id="sample"></select>
+        </div>
+        <div id="upload-box" class="hidden" style="margin-top:8px">
+          <div class="drop" id="drop">Drop a PNG or JPG here, or click to choose
+            <input type="file" id="file" accept="image/*" hidden>
+          </div>
+          <img id="preview" class="preview hidden" alt="Preview of the chosen image">
+          <div id="fileinfo" class="small muted" style="margin-top:6px"></div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="title">2. Effect</label>
+        <div class="radio-cards" id="filters">
+          <label class="on"><input type="radio" name="filter" value="gaussian" checked>Gaussian blur</label>
+          <label><input type="radio" name="filter" value="sobel">Edge detection (Sobel)</label>
+          <label><input type="radio" name="filter" value="box">Box blur</label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="title" for="k">3. Filter size</label>
+        <div class="rangeval"><span class="small muted">Bigger means more work per pixel</span><b id="kval">7 × 7</b></div>
+        <input type="range" id="k" min="3" max="15" step="2" value="7">
+      </div>
+
+      <div class="field">
+        <label class="title" for="maxdim">4. Image size</label>
+        <select id="maxdim">
+          <option value="0">Original size</option>
+          <option value="4096">Shrink to 4096 px wide at most</option>
+          <option value="2048">Shrink to 2048 px</option>
+          <option value="1024">Shrink to 1024 px (fastest)</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label class="title" for="threads">5. CPU threads for OpenMP</label>
+        <select id="threads"></select>
+      </div>
+
+      <div class="field">
+        <label class="title" for="reps">6. Repeats (median is reported)</label>
+        <select id="reps">
+          <option value="1">1 (quick)</option>
+          <option value="3" selected>3</option>
+          <option value="5">5</option>
+          <option value="10">10 (most accurate)</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label class="title">7. Extra experiments</label>
+        <label class="check"><input type="checkbox" id="omp_sweep"><span>CPU thread scaling<br><span class="small muted">Runs OpenMP with 1, 2, 4, 8 and 16 threads</span></span></label>
+        <label class="check" id="block-check"><input type="checkbox" id="block_sweep"><span>GPU block shapes<br><span class="small muted">Tries 8×8, 16×16 and 32×32 thread blocks</span></span></label>
+      </div>
+
+      <button type="submit" class="primary" id="run">Run</button>
+      <div id="msg" class="msg muted"></div>
+    </form>
+
+    <div id="results">
+      <div class="card" id="progress-card">
+        <h2 id="status-title">Ready</h2>
+        <p class="muted small" id="status-sub">Pick an image and press Run. Every result is checked against the one-core answer.</p>
+        <div class="steps" id="steps"></div>
+      </div>
+
+      <div class="card hidden" id="images-card">
+        <div class="images">
+          <figure>
+            <div class="frame"><img id="img-original" alt="Original image in grayscale" hidden></div>
+            <figcaption id="cap-original">Original (grayscale)</figcaption>
+          </figure>
+          <figure>
+            <div class="frame" id="frame-output"><span class="small">Result appears when the first fast version finishes</span><img id="img-output" alt="Filtered image" hidden></div>
+            <figcaption id="cap-output">Result</figcaption>
+          </figure>
+        </div>
+      </div>
+
+      <div class="card hidden" id="summary-card">
+        <p class="headline" id="headline"></p>
+        <div class="tablewrap">
+          <table id="table">
+            <thead><tr>
+              <th>Version</th><th>Computing</th><th>Copying to/from GPU</th><th>Whole job</th><th>Faster than serial</th><th>Check vs serial</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="small muted" style="margin-top:8px">"Computing" is the filter itself. "Whole job" adds the time to copy the image to the GPU and the result back. Each number is the median of the repeats.</p>
+      </div>
+
+      <div class="charts hidden" id="charts">
+        <div class="card chart" id="chart-time"></div>
+        <div class="card chart" id="chart-speed"></div>
+        <div class="card chart hidden" id="chart-omp"></div>
+        <div class="card chart hidden" id="chart-block"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ Benchmarks -->
+<section id="tab-bench" class="tab">
+  <h2>Full benchmark results</h2>
+  <p class="muted">These come from the complete test: 728 runs over 4 images, 7 filter sizes and 26 settings each. The plots below are the saved results, so they show instantly. Use the Live demo tab to run your own image.</p>
+  <div class="facts">
+    <div class="fact"><b>728 / 728</b>runs matched the one-core answer (largest difference 0.0000005)</div>
+    <div class="fact"><b>6.7× to 8.5×</b>OpenMP speedup at 16 threads; stops improving after about 4 threads</div>
+    <div class="fact"><b>up to 389×</b>GPU speedup for the computing alone (tiled kernel, 15 × 15 filter, 8K image)</div>
+    <div class="fact"><b>about 104×</b>the same job once copying to and from the GPU is counted</div>
+    <div class="fact"><b>70% to 93%</b>of GPU time spent copying data, not computing</div>
+    <div class="fact"><b>16 × 16</b>thread blocks were fastest on the GPU</div>
+  </div>
+  <div class="plots" id="plots"></div>
+  <p class="small muted" id="noplots"></p>
+</section>
+
+<!-- ============================================================ How it works -->
+<section id="tab-how" class="tab">
+  <div class="card how">
+    <h2>What is being computed</h2>
+    <p>A picture is a grid of pixels. To filter it, each new pixel is made from the pixels around it: take a small square of neighbours, multiply each by a weight, and add them up. The weights decide the effect (blur or edges). The square's side is the filter size.</p>
+    <h2 style="margin-top:14px">The versions you are comparing</h2>
+    <ul>
+      <li><b>Serial:</b> one CPU core does every pixel in turn. This is the reference answer.</li>
+      <li><b>OpenMP:</b> the picture's rows are shared between CPU threads working at the same time.</li>
+      <li><b>CUDA naive:</b> the GPU has one worker per pixel. All data comes from the GPU's main memory.</li>
+      <li><b>CUDA + constant memory:</b> the filter weights are kept in a small memory made for values every worker reads.</li>
+      <li><b>CUDA + shared tiles:</b> each group of workers first copies the piece of picture it needs into a very fast memory, then works from that.</li>
+    </ul>
+    <h2 style="margin-top:14px">How the results are checked</h2>
+    <p>Every version's output is compared pixel by pixel with the serial output. A version passes only if no pixel differs by 0.0001 or more. Times are the median of the repeats, after one warm-up run that is thrown away.</p>
+    <h2 style="margin-top:14px">Why the GPU's "whole job" time is longer</h2>
+    <p>The picture has to be copied to the GPU and the result copied back. For a single image this copying often takes longer than the filter, so the GPU's advantage looks smaller when the whole job is counted. The charts show both.</p>
+  </div>
+</section>
+
+</main>
+<script src="/static/app.js"></script>
+</body>
+</html>

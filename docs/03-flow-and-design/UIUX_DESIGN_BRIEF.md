@@ -74,6 +74,10 @@ Style rules:
 
 For the demo, write three output images from one sample photo: Gaussian blur, Sobel edges and box blur, saved side by side with the original. Evaluators see correctness directly, not only a pass flag.
 
+## 6b. Demo page
+
+A single local page for live demonstrations (`ui/`). Left: numbered controls (image, effect, filter size, image-size cap, threads, repeats, extra experiments) and one Run button. Right: step progress, original and result images side by side, a one-sentence headline, a results table, and charts that appear as results arrive. Rules: plain-language labels, every number carries its unit, the GPU's whole-job time is always shown next to its compute-only time, the page never shows an invented number, and each chart has a one-line explanation. Charts use the same colour per version as the saved plots. A "Full benchmark results" tab shows the saved plots and key findings, and a "How it works" tab explains the versions in plain words.
+
 ## 7. Report layout
 
 `report/` follows the IEEE structure of the synopsis: abstract, introduction, methodology, experimental setup, results (one subsection per plot), discussion (bandwidth saturation, Amdahl gap, transfer cost), conclusion, references. Each plot sits next to the paragraph that interprets it.

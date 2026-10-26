@@ -54,6 +54,10 @@ python3 scripts/gen_images.py  # data/images/img01_4k ... img04_8k plus images.c
 0 ok, 1 validation failed, 2 bad arguments, 3 implementation or device unavailable.
 Add `--save-image out.png` to write the result (`--save-mode abs` for Sobel output).
 
+## Demo page
+
+For a live demonstration, double-click `start_demo.bat` (Windows) or run `bash scripts/start_ui.sh` inside Ubuntu, then open http://localhost:8000. Pick a sample image or upload your own, choose the effect and filter size, and press Run. The page runs serial, OpenMP and the three CUDA versions on your image, checks each against the serial result, and draws the images, timings, speedups and charts as they arrive. Shrinking the image (setting 4) makes runs much faster. `bash scripts/check_ui.sh` tests the page's server end to end.
+
 ## Reproduce all results
 
 ```bash
@@ -89,6 +93,7 @@ src/serial/    reference convolution
 src/openmp/    OpenMP implementation
 src/cuda/      CUDA kernels and device queries
 src/mpi/       MPI strip decomposition (optional)
+ui/            demo page and its server
 benchmarks/    sweep definition and helper sweeps
 analysis/      plotting and Amdahl scripts
 scripts/       build, test, data generation, summaries

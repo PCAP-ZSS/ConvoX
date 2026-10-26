@@ -12,3 +12,4 @@ __pycache__/
 !data/images/images.csv
 results/*.log
 results/quick/
+ui/runs/

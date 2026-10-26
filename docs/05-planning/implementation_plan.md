@@ -77,6 +77,13 @@ Each phase is a separable module (code, data and write-up), so the project can l
 - [x] 7.4 Divide the work three ways and write `docs/06-presentation/work_split.md`.
 - [ ] 7.5 Slides and a rehearsal.
 
+## Phase 8: Demo interface (added after the core project)
+
+- [x] 8.1 `convox run --json` for machine-readable results.
+- [x] 8.2 `ui/server.py`: local server using only the Python standard library and Pillow; sample or uploaded image, one job at a time, live progress, input checks.
+- [x] 8.3 `ui/static/`: page with controls, step progress, image comparison, results table and four SVG charts (time, speedup, thread scaling, block shapes), plus the saved full-benchmark plots.
+- [x] 8.4 Launchers `scripts/start_ui.sh` and `start_demo.bat`; end-to-end check `scripts/check_ui.sh`.
+
 ## Risks to watch
 
 | Risk | Trigger | Response |

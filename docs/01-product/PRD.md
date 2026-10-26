@@ -31,7 +31,7 @@ Production convolution libraries (cuDNN, OpenCV, oneDNN) are tuned black boxes. 
 
 ## 4. Non-goals
 
-- A website, GUI or live demo. See section 8.
+- A hosted web service. A local demo page that runs the same program is provided (`ui/`, see section 8).
 - Beating cuDNN or OpenCV, or implementing FFT, Winograd or im2col methods.
 - Separable-filter optimisation, multi-channel batching or video pipelines.
 - Communication-optimal MPI distribution.
@@ -76,7 +76,7 @@ Production convolution libraries (cuDNN, OpenCV, oneDNN) are tuned black boxes. 
 - Amdahl's predicted ceiling is plotted against the observed plateau, with a written explanation of the gap.
 - The report and a presentation can be split into three equal parts (see `docs/06-presentation`).
 
-## 8. How results are delivered (no website)
+## 8. How results are delivered
 
 | Output | Form |
 |---|---|
@@ -85,6 +85,7 @@ Production convolution libraries (cuDNN, OpenCV, oneDNN) are tuned black boxes. 
 | Plots | PNG files in `results/plots/`, optionally opened with `--show` |
 | Visual correctness check | Output images from FR14 |
 | Analysis | Written report in `report/` |
+| Live demo | Local web page (`start_demo.bat` or `scripts/start_ui.sh`): pick or upload an image, run every version, see images, timings, speedups and charts. It calls the real `convox` program; nothing is simulated. |
 
 ## 9. Constraints and assumptions
 

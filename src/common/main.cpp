@@ -31,7 +31,7 @@ static const char* USAGE =
     "  convox run --impl serial --image PATH [--k 5] [--filter gaussian|sobel|box]\n"
     "             [--reps 10] [--out results/raw/results.csv] [--no-csv] [--save-image PATH]\n"
     "             [--threads N --schedule static|dynamic|guided --chunk N --collapse 1|2]\n"
-    "             [--block 16x16] [--save-mode clamp|abs]\n"
+    "             [--block 16x16] [--save-mode clamp|abs] [--json]\n"
     "  convox sweep [--config benchmarks/sweep.conf] [--out results/raw/results.csv] [--reps N]\n"
     "               [--images id1,id2] [--ks 3,7] [--dry-run] [--resume]\n"
     "  convox profile --image PATH [--k 5] [--filter gaussian]   (times the serial parts for Amdahl)\n";
@@ -46,7 +46,7 @@ static Args parse_args(int argc, char** argv, int first) {
         if (key == "-k") key = "--k";
         if (key.rfind("--", 0) != 0) throw std::invalid_argument("unexpected argument '" + key + "'");
         key = key.substr(2);
-        if (key == "no-csv" || key == "dry-run" || key == "resume") {
+        if (key == "no-csv" || key == "dry-run" || key == "resume" || key == "json") {
             a[key] = "1";
         } else {
             if (i + 1 >= argc) throw std::invalid_argument("--" + key + " needs a value");
@@ -125,9 +125,22 @@ static int cmd_run(const Args& a) {
     row.image_id = std::filesystem::path(image_path).stem().string();
     row.filter_type = filter_name;
 
-    std::printf("%-11s %-10s K=%-2d  kernel %10.3f ms  total %10.3f ms  err %.2e  %s\n",
-                cfg.impl.c_str(), row.image_id.c_str(), k, row.med.kernel_ms, row.med.total_ms,
-                row.val.max_abs_err, row.val.pass ? "PASS" : "FAIL");
+    if (a.count("json")) {
+        // One JSON object on one line, for the web interface and other tools.
+        std::printf(
+            "{\"impl\":\"%s\",\"image\":\"%s\",\"width\":%d,\"height\":%d,\"k\":%d,\"filter\":\"%s\","
+            "\"threads\":%d,\"schedule\":\"%s\",\"block_x\":%d,\"block_y\":%d,\"reps\":%d,"
+            "\"kernel_ms\":%.6f,\"h2d_ms\":%.6f,\"d2h_ms\":%.6f,\"total_ms\":%.6f,"
+            "\"max_abs_err\":%.9g,\"rms_err\":%.9g,\"pass\":%s,\"smem_bytes\":%d,\"occupancy\":%.4f}\n",
+            row.cfg.impl.c_str(), row.image_id.c_str(), row.width, row.height, k, filter_name.c_str(),
+            row.cfg.threads, row.cfg.schedule.c_str(), row.cfg.block_x, row.cfg.block_y, reps,
+            row.med.kernel_ms, row.med.h2d_ms, row.med.d2h_ms, row.med.total_ms, row.val.max_abs_err,
+            row.val.rms_err, row.val.pass ? "true" : "false", row.smem_bytes, row.occupancy);
+    } else {
+        std::printf("%-11s %-10s K=%-2d  kernel %10.3f ms  total %10.3f ms  err %.2e  %s\n",
+                    cfg.impl.c_str(), row.image_id.c_str(), k, row.med.kernel_ms, row.med.total_ms,
+                    row.val.max_abs_err, row.val.pass ? "PASS" : "FAIL");
+    }
 
     if (!a.count("no-csv")) {
         const std::string out_csv = get(a, "out", "results/raw/results.csv");

@@ -115,6 +115,20 @@ The MPI driver is a separate binary, launched with `mpirun -np N convox_mpi ...`
 - `analysis/amdahl.py` estimates the serial fraction `f` and plots `S(N) = 1 / (f + (1-f)/N)` against measured speedup.
 - `scripts/summary.py` prints aligned terminal tables. `--show` opens plots in the default viewer.
 
+### 3.11 Demo interface
+
+`ui/server.py` (standard library plus Pillow, no network access needed) serves `ui/static/` and a small JSON API:
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/info` | CPU, GPU, available samples and saved plots |
+| `POST /api/run?filter=&k=&reps=&threads=&maxdim=&omp_sweep=&block_sweep=&sample=` | start a job; the body is the uploaded image, or `sample` names a generated image |
+| `GET /api/job/<id>` | progress and results so far |
+| `GET /files/<id>/original.jpg`, `output.jpg` | display images |
+| `GET /plots/<name>.png` | saved benchmark plots |
+
+A job converts the image to 8-bit grayscale, then calls `build/convox run --json` once per version (serial, OpenMP, three CUDA kernels, plus optional OpenMP thread and CUDA block sweeps), so each result is validated against the serial output by the same code as the benchmark. Only one job runs at a time (HTTP 409 otherwise) because timings need the machine to themselves. The server listens on 127.0.0.1 only, limits uploads to 200 MB and 60 megapixels, validates every parameter, and serves files only by fixed name pattern. `scripts/check_ui.sh` tests the API end to end.
+
 ## 4. Analytical model
 
 - Naive kernel: 2K^2 FLOPs per output pixel and 4K^2 bytes loaded, so arithmetic intensity is about 0.5 FLOP/byte for any K.

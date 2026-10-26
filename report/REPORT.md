@@ -143,7 +143,9 @@ Pure MPI scales almost linearly to 4 ranks, then flattens at about 5x, the same 
 - MPI was measured on one node, so it has no network cost.
 - Profiler-measured DRAM throughput comes from one 8K image at K=3, 7 and 15 with 16x16 blocks.
 
-## 6. Reproduce
+## 6. Reproduce and demonstrate
+
+A local demo page (`start_demo.bat` or `bash scripts/start_ui.sh`, then http://localhost:8000) runs the same program on any image and shows the images, timings, speedups and charts live.
 
 ```bash
 bash scripts/build.sh && bash scripts/run_tests.sh
