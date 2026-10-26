@@ -10,7 +10,7 @@ Each phase is a separable module (code, data and write-up), so the project can l
 - [x] 0.2 Confirm GPU access: `nvidia-smi` and `nvcc --version` in WSL2, or choose Colab or a lab machine. Done when a trivial CUDA kernel runs.
 - [x] 0.3 CMake skeleton with optional CUDA and MPI detection and a `scripts/build.sh`. Done when a CPU-only build succeeds.
 - [x] 0.4 Vendor `stb_image` and `stb_image_write` under `third_party/`. Done when an image loads and saves.
-- [ ] 0.5 Collect 4-5 test images (4K and 8K) and fill `data/images/images.csv`. Done when the files exist with sources recorded.
+- [x] 0.5 Generate 4 synthetic test images (2x 4K, 2x 8K) via scripts/gen_images.py and fill `data/images/images.csv`. Done when the files exist with sources recorded.
 - [ ] 0.6 Initial commit and push of the skeleton.
 
 ## Phase 1: Common core and serial baseline (Week 1)

@@ -9,3 +9,4 @@ data/images/*
 __pycache__/
 .venv/
 .vscode/
+!data/images/images.csv
