@@ -50,7 +50,7 @@ Failure branches:
 
 ## 3. Sweep flow (`convox sweep`)
 
-1. Read `benchmarks/sweep.yaml`. It lists images, K values, thread counts, schedules, block sizes and variants.
+1. Read `benchmarks/sweep.conf`. It lists images, K values, thread counts, schedules, block sizes and variants.
 2. Expand to the full run matrix (Table I of the synopsis).
 3. Skip combinations that don't apply (for example, block size for CPU variants).
 4. For each combination, run the single-run flow. Reuse the loaded image and serial reference between runs on the same image and K.

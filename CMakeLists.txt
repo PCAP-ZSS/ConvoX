@@ -79,7 +79,8 @@ if(CMAKE_CUDA_COMPILER)
 endif()
 
 # Dispatcher: maps an implementation name to its function.
-add_library(convox_runner STATIC src/common/runner.cpp)
+add_library(convox_runner STATIC src/common/runner.cpp src/common/sweep.cpp
+  src/common/profile.cpp)
 target_link_libraries(convox_runner PUBLIC convox_common ${CONVOX_IMPL_LIBS})
 
 # ---- executable ----
@@ -87,7 +88,7 @@ add_executable(convox src/common/main.cpp)
 target_link_libraries(convox PRIVATE convox_runner)
 
 # ---- tests, built on demand: cmake --build build --target <name> ----
-set(CONVOX_TESTS image filter validator serial timing omp)
+set(CONVOX_TESTS image filter validator serial timing omp sweep)
 if(CMAKE_CUDA_COMPILER)
   list(APPEND CONVOX_TESTS cuda)
 endif()

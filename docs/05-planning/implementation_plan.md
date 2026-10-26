@@ -52,13 +52,13 @@ Each phase is a separable module (code, data and write-up), so the project can l
 
 ## Phase 5: Sweep and analysis (Weeks 5-6)
 
-- [ ] 5.1 `convox sweep` and `benchmarks/sweep.yaml` expanding the full matrix.
-- [ ] 5.2 `scripts/run_all.sh`: build, sweep and plots in one command.
+- [x] 5.1 `convox sweep` and `benchmarks/sweep.conf` expanding the full matrix.
+- [x] 5.2 `scripts/run_all.sh`: build, sweep and plots in one command.
 - [ ] 5.3 Full benchmark run to produce the final `results.csv`.
-- [ ] 5.4 `scripts/summary.py` terminal tables.
-- [ ] 5.5 `analysis/plots.py` for the five required plots, with `--show`.
-- [ ] 5.6 `analysis/amdahl.py`: measured serial fraction, predicted ceiling vs observed plateau.
-- [ ] 5.7 Visual-check images (original, Gaussian, Sobel, box side by side).
+- [x] 5.4 `scripts/summary.py` terminal tables.
+- [x] 5.5 `analysis/plots.py` for the five required plots, with `--show`.
+- [x] 5.6 `analysis/amdahl.py`: measured serial fraction, predicted ceiling vs observed plateau.
+- [x] 5.7 Visual-check images (original, Gaussian, Sobel, box side by side).
 - Done when: one command regenerates every table and plot from a clean checkout.
 
 ## Phase 6: MPI extension (Week 5, optional)

@@ -103,7 +103,7 @@ One executable, `convox`:
 convox run   --impl {serial|omp|cuda} --variant ... --image PATH --k 7 --filter gaussian
              [--threads N --schedule static|dynamic|guided --chunk N --collapse]
              [--block 16x16] [--reps 10] [--out results/raw/results.csv] [--save-image PATH]
-convox sweep --config benchmarks/sweep.yaml
+convox sweep --config benchmarks/sweep.conf
 convox info                      # CPU, GPU, compiler, OpenMP and CUDA versions
 ```
 

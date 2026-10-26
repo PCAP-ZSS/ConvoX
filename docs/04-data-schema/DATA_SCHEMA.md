@@ -8,8 +8,9 @@ There is no backend or database. All data lives in flat files, so every table he
 |---|---|---|
 | `results/raw/results.csv` | `convox` | One row per configuration, with the median timing and validation result |
 | `results/raw/reps.csv` | `convox` | One row per repetition (warm-up excluded), for variance and error bars |
-| `results/raw/sweep_manifest.json` | `convox sweep` | Environment and sweep definition |
-| `benchmarks/sweep.yaml` | people | Input: what to sweep |
+| `results/raw/sweep_manifest.json` | `convox sweep` | Environment, GPU peak bandwidth/FLOPs and sweep definition |
+| `results/raw/serial_profile.csv` | `convox sweep`, `convox profile` | Time of the non-parallel parts (load, filter, alloc, save) per image and K, for the Amdahl serial fraction |
+| `benchmarks/sweep.conf` | people | Input: what to sweep |
 | `data/images/images.csv` | people | Input: image catalogue |
 | `results/plots/*.png`, `*.pdf` | `analysis/plots.py` | Derived figures |
 
@@ -70,26 +71,29 @@ Speedup is not stored. It is derived in analysis as `T_serial / T` for the same 
 | `class` | enum | `4k` (3840x2160) or `8k` (7680x4320) |
 | `source` | string | Where the image came from, and its licence |
 
-## 5. `sweep.yaml`
+## 5. `sweep.conf`
 
-```yaml
-images: [img01_4k, img02_4k, img03_8k, img04_8k]
-filter: gaussian
-k: [3, 5, 7, 9, 11, 13, 15]
-reps: 10
-omp:
-  threads: [1, 2, 4, 6, 8, 12, 16]
-  schedule: [static, "dynamic:1", "dynamic:8", "dynamic:32", guided]
-  collapse: [1, 2]
-cuda:
-  variants: [naive, const, tiled]
-  block: [8x8, 16x16, 32x32]
-mpi:
-  ranks: [2, 4]
-  local: [omp, cuda]
+Plain `key = values` lines (space-separated values, `#` comments). See `benchmarks/sweep.conf`.
+
+```
+image_dir = data/images
+images    = img01_4k img02_4k img03_8k img04_8k
+filter    = gaussian
+k         = 3 5 7 9 11 13 15
+reps      = 10
+omp.threads       = 1 2 4 6 8 12 16
+omp.sched_threads = 8
+omp.schedule      = static dynamic:1 dynamic:8 dynamic:32 guided
+omp.collapse      = 1 2
+cuda.variants = naive const tiled
+cuda.block    = 8x8 16x16 32x32
 ```
 
-Tables I and II in the synopsis define the values. Combinations that don't apply to an implementation are skipped.
+Tables I and II in the synopsis define the values. The thread sweep runs with the static schedule and
+row parallelism. The schedule x collapse sweep runs at `omp.sched_threads` only, since crossing it with
+every thread count would multiply the runtime without adding a finding. Per (image, K) the sweep runs 26
+configurations: serial, 7 thread counts, 9 further schedule/collapse combinations and 9 CUDA variant x block
+combinations (17 without a GPU).
 
 ## 6. `sweep_manifest.json`
 
@@ -100,7 +104,7 @@ Tables I and II in the synopsis define the values. Combinations that don't apply
   "cpu": {"model": "", "physical_cores": 0, "logical_cores": 0},
   "gpu": {"model": "", "compute_capability": "", "vram_mb": 0, "driver": ""},
   "compiler": "", "cuda_version": "", "openmp_version": "",
-  "sweep_config": "benchmarks/sweep.yaml"
+  "peak_gpu_gbps": 0, "peak_gpu_gflops": 0
 }
 ```
 

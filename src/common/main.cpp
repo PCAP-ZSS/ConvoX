@@ -1,15 +1,21 @@
 #include <omp.h>
 
+#include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <map>
+#include <sstream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "common/csv.h"
 #include "common/env.h"
+#include "common/profile.h"
 #include "common/runner.h"
+#include "common/sweep.h"
 #include "serial/serial.h"
 
 #ifdef CONVOX_HAVE_CUDA
@@ -25,7 +31,10 @@ static const char* USAGE =
     "  convox run --impl serial --image PATH [--k 5] [--filter gaussian|sobel|box]\n"
     "             [--reps 10] [--out results/raw/results.csv] [--no-csv] [--save-image PATH]\n"
     "             [--threads N --schedule static|dynamic|guided --chunk N --collapse 1|2]\n"
-    "             [--block 16x16]\n";
+    "             [--block 16x16] [--save-mode clamp|abs]\n"
+    "  convox sweep [--config benchmarks/sweep.conf] [--out results/raw/results.csv] [--reps N]\n"
+    "               [--images id1,id2] [--ks 3,7] [--dry-run]\n"
+    "  convox profile --image PATH [--k 5] [--filter gaussian]   (times the serial parts for Amdahl)\n";
 
 using Args = std::map<std::string, std::string>;
 
@@ -37,7 +46,7 @@ static Args parse_args(int argc, char** argv, int first) {
         if (key == "-k") key = "--k";
         if (key.rfind("--", 0) != 0) throw std::invalid_argument("unexpected argument '" + key + "'");
         key = key.substr(2);
-        if (key == "no-csv") {
+        if (key == "no-csv" || key == "dry-run") {
             a[key] = "1";
         } else {
             if (i + 1 >= argc) throw std::invalid_argument("--" + key + " needs a value");
@@ -126,8 +135,53 @@ static int cmd_run(const Args& a) {
         const auto reps_csv = std::filesystem::path(out_csv).parent_path() / "reps.csv";
         append_reps(reps_csv.string(), row.run_id, rep_times);
     }
-    if (a.count("save-image")) save_image(get(a, "save-image"), out);
+    if (a.count("save-image")) {
+        // "abs" maps |value| to [0, 1] by the largest magnitude, so Sobel edges of either sign show.
+        if (get(a, "save-mode", "clamp") == "abs") {
+            float mx = 1e-12f;
+            for (float v : out.px) mx = std::max(mx, std::fabs(v));
+            Image vis = out;
+            for (float& v : vis.px) v = std::fabs(v) / mx;
+            save_image(get(a, "save-image"), vis);
+        } else {
+            save_image(get(a, "save-image"), out);
+        }
+    }
     return row.val.pass ? 0 : EXIT_VALIDATION;
+}
+
+static int cmd_profile(const Args& a) {
+    const std::string image_path = get(a, "image");
+    if (image_path.empty()) throw std::invalid_argument("--image is required");
+    const int k = get_int(a, "k", 5);
+    const std::string filter_name = get(a, "filter", "gaussian");
+    SerialProfile p = profile_serial_parts(image_path, parse_filter_type(filter_name), k);
+    const std::string id = std::filesystem::path(image_path).stem().string();
+    std::printf("%s K=%d  load %.2f ms  filter %.4f ms  alloc %.2f ms  save %.2f ms\n", id.c_str(), k,
+                p.load_ms, p.filter_ms, p.alloc_ms, p.save_ms);
+    if (!a.count("no-csv")) append_profile(get(a, "out", "results/raw/serial_profile.csv"), id, filter_name, k, p);
+    return 0;
+}
+
+static std::vector<std::string> split_commas(const std::string& s) {
+    std::vector<std::string> out;
+    std::stringstream ss(s);
+    for (std::string item; std::getline(ss, item, ',');) out.push_back(item);
+    return out;
+}
+
+static int cmd_sweep(const Args& a) {
+    SweepConfig s = load_sweep_config(get(a, "config", "benchmarks/sweep.conf"));
+    if (a.count("images")) s.images = split_commas(get(a, "images"));
+    if (a.count("ks")) {
+        s.k.clear();
+        for (const auto& k : split_commas(get(a, "ks"))) s.k.push_back(std::stoi(k));
+    }
+    s.reps = get_int(a, "reps", s.reps);
+    SweepOptions opt;
+    opt.out_csv = get(a, "out", opt.out_csv);
+    opt.dry_run = a.count("dry-run") > 0;
+    return run_sweep(s, opt);
 }
 
 int main(int argc, char** argv) {
@@ -139,6 +193,8 @@ int main(int argc, char** argv) {
     try {
         if (cmd == "info") return cmd_info();
         if (cmd == "run") return cmd_run(parse_args(argc, argv, 2));
+        if (cmd == "sweep") return cmd_sweep(parse_args(argc, argv, 2));
+        if (cmd == "profile") return cmd_profile(parse_args(argc, argv, 2));
         std::fputs(USAGE, stderr);
         return EXIT_BAD_ARGS;
     } catch (const std::invalid_argument& e) {
