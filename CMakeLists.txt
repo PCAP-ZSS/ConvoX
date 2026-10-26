@@ -87,6 +87,11 @@ target_link_libraries(convox_runner PUBLIC convox_common ${CONVOX_IMPL_LIBS})
 add_executable(convox src/common/main.cpp)
 target_link_libraries(convox PRIVATE convox_runner)
 
+if(MPI_CXX_FOUND)
+  add_executable(convox_mpi src/mpi/convox_mpi.cpp)
+  target_link_libraries(convox_mpi PRIVATE convox_runner MPI::MPI_CXX)
+endif()
+
 # ---- tests, built on demand: cmake --build build --target <name> ----
 set(CONVOX_TESTS image filter validator serial timing omp sweep)
 if(CMAKE_CUDA_COMPILER)

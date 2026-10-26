@@ -33,7 +33,7 @@ static const char* USAGE =
     "             [--threads N --schedule static|dynamic|guided --chunk N --collapse 1|2]\n"
     "             [--block 16x16] [--save-mode clamp|abs]\n"
     "  convox sweep [--config benchmarks/sweep.conf] [--out results/raw/results.csv] [--reps N]\n"
-    "               [--images id1,id2] [--ks 3,7] [--dry-run]\n"
+    "               [--images id1,id2] [--ks 3,7] [--dry-run] [--resume]\n"
     "  convox profile --image PATH [--k 5] [--filter gaussian]   (times the serial parts for Amdahl)\n";
 
 using Args = std::map<std::string, std::string>;
@@ -46,7 +46,7 @@ static Args parse_args(int argc, char** argv, int first) {
         if (key == "-k") key = "--k";
         if (key.rfind("--", 0) != 0) throw std::invalid_argument("unexpected argument '" + key + "'");
         key = key.substr(2);
-        if (key == "no-csv" || key == "dry-run") {
+        if (key == "no-csv" || key == "dry-run" || key == "resume") {
             a[key] = "1";
         } else {
             if (i + 1 >= argc) throw std::invalid_argument("--" + key + " needs a value");
@@ -181,6 +181,7 @@ static int cmd_sweep(const Args& a) {
     SweepOptions opt;
     opt.out_csv = get(a, "out", opt.out_csv);
     opt.dry_run = a.count("dry-run") > 0;
+    opt.resume = a.count("resume") > 0;
     return run_sweep(s, opt);
 }
 

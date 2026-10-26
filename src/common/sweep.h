@@ -30,6 +30,7 @@ std::vector<Config> expand_configs(const SweepConfig& s, bool with_cuda);
 struct SweepOptions {
     std::string out_csv = "results/raw/results.csv";
     bool dry_run = false;
+    bool resume = false;  // skip configurations already in out_csv and append to its sweep
 };
 
 // Run every configuration for every image and K, appending to the CSV files and writing

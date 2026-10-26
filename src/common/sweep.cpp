@@ -147,6 +147,33 @@ static void write_manifest(const fs::path& path, const std::string& sweep_id, co
     f << "]\n}\n";
 }
 
+// Identity of one configuration inside a results file, matching how append_result writes it.
+static std::string config_key(const std::string& impl, const std::string& image, int k, const Config& c) {
+    auto opt = [](int v) { return v > 0 ? std::to_string(v) : std::string(); };
+    return impl + "|" + image + "|" + std::to_string(k) + "|" + opt(c.threads) + "|" + c.schedule + "|" +
+           opt(c.chunk) + "|" + opt(c.collapse) + "|" + opt(c.block_x) + "|" + opt(c.block_y);
+}
+
+// Read the configurations already recorded in a results file, and the sweep_id of its last row.
+static std::set<std::string> read_done(const std::string& path, std::string* last_sweep_id) {
+    std::set<std::string> done;
+    std::ifstream f(path);
+    std::string line;
+    if (!std::getline(f, line)) return done;  // header
+    while (std::getline(f, line)) {
+        std::vector<std::string> v;
+        std::stringstream ss(line);
+        for (std::string cell; v.size() < 17 && std::getline(ss, cell, ',');) v.push_back(cell);
+        if (v.size() < 17) continue;
+        // columns: 0 run_id 1 sweep_id 3 impl 4 image_id 8 k 10 threads 11 schedule 12 chunk
+        //          13 collapse 14 block_x 15 block_y
+        *last_sweep_id = v[1];
+        done.insert(v[3] + "|" + v[4] + "|" + v[8] + "|" + v[10] + "|" + v[11] + "|" + v[12] + "|" + v[13] + "|" +
+                    v[14] + "|" + v[15]);
+    }
+    return done;
+}
+
 int run_sweep(const SweepConfig& s, const SweepOptions& opt) {
     bool with_cuda = false;
 #ifdef CONVOX_HAVE_CUDA
@@ -158,24 +185,49 @@ int run_sweep(const SweepConfig& s, const SweepOptions& opt) {
                 configs.size(), total, with_cuda ? "" : " (no CUDA device: CUDA variants skipped)");
     if (opt.dry_run) return 0;
 
-    const std::string sweep_id = iso_timestamp_now();
+    std::string sweep_id = iso_timestamp_now();
     const fs::path out_dir = fs::path(opt.out_csv).parent_path();
     const std::string reps_csv = (out_dir / "reps.csv").string();
     fs::create_directories(out_dir);
-    write_manifest(out_dir / "sweep_manifest.json", sweep_id, s);
+
+    std::set<std::string> already;
+    if (opt.resume && fs::exists(opt.out_csv)) {
+        std::string prev;
+        already = read_done(opt.out_csv, &prev);
+        if (!prev.empty()) sweep_id = prev;  // keep one sweep_id so the analysis sees a single sweep
+        std::printf("resume: %zu configurations already recorded in sweep %s\n", already.size(), sweep_id.c_str());
+    } else {
+        write_manifest(out_dir / "sweep_manifest.json", sweep_id, s);
+    }
+
+    size_t pending_total = 0;
+    for (const auto& image_id : s.images)
+        for (int k : s.k)
+            for (const Config& cfg : configs)
+                if (!already.count(config_key(cfg.impl, image_id, k, cfg))) ++pending_total;
 
     size_t done = 0, failed = 0;
     const auto t0 = std::chrono::steady_clock::now();
     for (const auto& image_id : s.images) {
-        const Image img = load_image((fs::path(s.image_dir) / (image_id + ".png")).string());
+        const std::string image_path = (fs::path(s.image_dir) / (image_id + ".png")).string();
+        Image img;
+        bool loaded = false;
         for (int k : s.k) {
+            std::vector<Config> todo;
+            for (const Config& cfg : configs)
+                if (!already.count(config_key(cfg.impl, image_id, k, cfg))) todo.push_back(cfg);
+            if (todo.empty()) continue;
+            if (!loaded) {
+                img = load_image(image_path);
+                loaded = true;
+            }
             const Filter filter = make_filter(parse_filter_type(s.filter), k);
             Image ref;
             convolve_serial(img, filter, ref);
-            append_profile((out_dir / "serial_profile.csv").string(), image_id, s.filter, k,
-                           profile_serial_parts((fs::path(s.image_dir) / (image_id + ".png")).string(),
-                                                parse_filter_type(s.filter), k));
-            for (const Config& cfg : configs) {
+            if (todo.size() == configs.size())  // first visit of this (image, K)
+                append_profile((out_dir / "serial_profile.csv").string(), image_id, s.filter, k,
+                               profile_serial_parts(image_path, parse_filter_type(s.filter), k));
+            for (const Config& cfg : todo) {
                 Image out;
                 std::vector<Timing> reps;
                 Row row = execute(cfg, img, filter, ref, s.reps, out, &reps);
@@ -189,14 +241,13 @@ int run_sweep(const SweepConfig& s, const SweepOptions& opt) {
                 ++done;
                 if (!row.val.pass) ++failed;
                 double elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
-                double eta = elapsed / done * (total - done);
+                double eta = elapsed / done * (pending_total - done);
                 std::string sched = row.cfg.schedule.empty() ? "-" : row.cfg.schedule;
                 if (row.cfg.chunk > 0) sched += ":" + std::to_string(row.cfg.chunk);
                 std::printf("[%4zu / %zu] %-10s %-8s K=%-2d thr=%-2d sch=%-10s col=%d blk=%dx%d  %9.3f ms  %s  ~%.0f min left\n",
-                            done, total, row.cfg.impl.c_str(), image_id.c_str(), k, row.cfg.threads,
-                            sched.c_str(), row.cfg.collapse,
-                            row.cfg.block_x, row.cfg.block_y, row.med.total_ms, row.val.pass ? "PASS" : "FAIL",
-                            eta / 60.0);
+                            done, pending_total, row.cfg.impl.c_str(), image_id.c_str(), k, row.cfg.threads,
+                            sched.c_str(), row.cfg.collapse, row.cfg.block_x, row.cfg.block_y, row.med.total_ms,
+                            row.val.pass ? "PASS" : "FAIL", eta / 60.0);
                 std::fflush(stdout);
             }
         }
