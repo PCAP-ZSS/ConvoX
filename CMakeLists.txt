@@ -16,14 +16,27 @@ target_include_directories(convox_common PUBLIC
   ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/third_party)
 target_link_libraries(convox_common PUBLIC OpenMP::OpenMP_CXX)
 
+option(CONVOX_CLAMP_EDGE "Clamp-to-edge borders instead of zero-padding" OFF)
+if(CONVOX_CLAMP_EDGE)
+  add_compile_definitions(CONVOX_CLAMP_EDGE)
+endif()
+
+# Serial reference: no auto-vectorisation, so it stays the plain-loop baseline.
+add_library(convox_serial STATIC src/serial/serial.cpp)
+target_include_directories(convox_serial PUBLIC ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(convox_serial PUBLIC convox_common)
+target_compile_options(convox_serial PRIVATE -fno-tree-vectorize -fno-tree-slp-vectorize)
+
 add_executable(convox src/common/main.cpp)
-target_link_libraries(convox PRIVATE convox_common)
+target_link_libraries(convox PRIVATE convox_common convox_serial)
 
 # Test executables, built on demand with `cmake --build build --target test_image`.
 add_executable(test_image EXCLUDE_FROM_ALL tests/test_image.cpp)
 target_link_libraries(test_image PRIVATE convox_common)
 add_executable(test_filter EXCLUDE_FROM_ALL tests/test_filter.cpp)
 target_link_libraries(test_filter PRIVATE convox_common)
+add_executable(test_serial EXCLUDE_FROM_ALL tests/test_serial.cpp)
+target_link_libraries(test_serial PRIVATE convox_serial)
 
 # Optional CUDA
 include(CheckLanguage)
