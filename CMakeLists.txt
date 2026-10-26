@@ -64,7 +64,11 @@ target_include_directories(convox_serial PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(convox_serial PUBLIC convox_common)
 target_compile_options(convox_serial PRIVATE -fno-tree-vectorize -fno-tree-slp-vectorize)
 
-set(CONVOX_IMPL_LIBS convox_serial)
+add_library(convox_openmp STATIC src/openmp/openmp.cpp)
+target_include_directories(convox_openmp PUBLIC ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(convox_openmp PUBLIC convox_common)
+
+set(CONVOX_IMPL_LIBS convox_serial convox_openmp)
 
 if(CMAKE_CUDA_COMPILER)
   add_library(convox_cuda STATIC src/cuda/device_info.cu)
@@ -83,7 +87,7 @@ add_executable(convox src/common/main.cpp)
 target_link_libraries(convox PRIVATE convox_runner)
 
 # ---- tests, built on demand: cmake --build build --target <name> ----
-foreach(t image filter validator serial timing)
+foreach(t image filter validator serial timing omp)
   add_executable(test_${t} EXCLUDE_FROM_ALL tests/test_${t}.cpp)
   target_link_libraries(test_${t} PRIVATE convox_runner)
 endforeach()

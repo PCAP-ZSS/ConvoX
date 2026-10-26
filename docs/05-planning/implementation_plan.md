@@ -27,11 +27,11 @@ Each phase is a separable module (code, data and write-up), so the project can l
 
 ## Phase 2: OpenMP (Week 2)
 
-- [ ] 2.1 Row-parallel `parallel for` variant, validated against serial.
-- [ ] 2.2 `collapse(2)` variant.
-- [ ] 2.3 Runtime-selectable schedule: static, dynamic(1, 8, 32), guided.
-- [ ] 2.4 Thread sweep driver {1, 2, 4, 6, 8, 12, 16}.
-- [ ] 2.5 Run on 4K and 8K for K in {3, 7, 15} and inspect the scaling shape.
+- [x] 2.1 Row-parallel `parallel for` variant, validated against serial.
+- [x] 2.2 `collapse(2)` variant.
+- [x] 2.3 Runtime-selectable schedule: static, dynamic(1, 8, 32), guided.
+- [x] 2.4 Thread sweep driver {1, 2, 4, 6, 8, 12, 16}.
+- [x] 2.5 Run on 4K and 8K for K in {3, 7, 15} and inspect the scaling shape.
 - Done when: all variants pass validation and the thread-sweep data is in the CSV.
 
 ## Phase 3: Naive CUDA (Week 3)

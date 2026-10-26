@@ -26,6 +26,10 @@ struct Row {
 // True when `impl` names a variant that is compiled into this binary.
 bool impl_available(const std::string& impl);
 
+// Fill in per-implementation defaults (omp: all threads, static schedule, row parallelism) and
+// reject invalid settings with std::invalid_argument.
+Config normalized(Config cfg);
+
 // Run one convolution of `in` with the implementation named in `cfg`. Throws
 // std::runtime_error if the implementation is unavailable.
 Timing run_once(const Config& cfg, const Image& in, const Filter& f, Image& out);
