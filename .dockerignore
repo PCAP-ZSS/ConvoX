@@ -1,0 +1,7 @@
+build/
+results/raw/
+ui/runs/
+data/images/*
+!data/images/images.csv
+.git/
+*.log

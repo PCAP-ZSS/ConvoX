@@ -18,7 +18,7 @@
 
 <nav class="tabs" role="tablist">
   <button data-tab="live" class="active" role="tab">Live demo</button>
-  <button data-tab="bench" role="tab">Full benchmark results</button>
+  <button data-tab="bench" role="tab">Saved full benchmark</button>
   <button data-tab="how" role="tab">How it works</button>
 </nav>
 
@@ -91,6 +91,8 @@
         <label class="title">7. Extra experiments</label>
         <label class="check"><input type="checkbox" id="omp_sweep"><span>CPU thread scaling<br><span class="small muted">Runs OpenMP with 1, 2, 4, 8 and 16 threads</span></span></label>
         <label class="check" id="block-check"><input type="checkbox" id="block_sweep"><span>GPU block shapes<br><span class="small muted">Tries 8×8, 16×16 and 32×32 thread blocks</span></span></label>
+        <label class="check"><input type="checkbox" id="k_sweep"><span>Filter size sweep<br><span class="small muted">Times serial, OpenMP and GPU at 3, 7, 11 and 15 (the slowest option)</span></span></label>
+        <label class="check" id="mpi-check"><input type="checkbox" id="mpi_sweep"><span>MPI processes<br><span class="small muted">Splits the image into strips for 1, 2, 4, 8 and 16 processes</span></span></label>
       </div>
 
       <button type="submit" class="primary" id="run">Run</button>
@@ -135,6 +137,8 @@
         <div class="card chart" id="chart-speed"></div>
         <div class="card chart hidden" id="chart-omp"></div>
         <div class="card chart hidden" id="chart-block"></div>
+        <div class="card chart hidden" id="chart-k"></div>
+        <div class="card chart hidden" id="chart-mpi"></div>
       </div>
     </div>
   </div>
@@ -142,8 +146,8 @@
 
 <!-- ============================================================ Benchmarks -->
 <section id="tab-bench" class="tab">
-  <h2>Full benchmark results</h2>
-  <p class="muted">These come from the complete test: 728 runs over 4 images, 7 filter sizes and 26 settings each. The plots below are the saved results, so they show instantly. Use the Live demo tab to run your own image.</p>
+  <h2>Saved full benchmark</h2>
+  <p class="muted">These come from the complete test run earlier on the four sample images: 728 runs over 7 filter sizes and 26 settings each. They are saved pictures, so they do not change when you run your own image. The charts for your own image appear on the Live demo tab, under the table, once you tick the extra experiments.</p>
   <div class="facts">
     <div class="fact"><b>728 / 728</b>runs matched the one-core answer (largest difference 0.0000005)</div>
     <div class="fact"><b>6.7× to 8.5×</b>OpenMP speedup at 16 threads; stops improving after about 4 threads</div>
@@ -168,6 +172,7 @@
       <li><b>CUDA naive:</b> the GPU has one worker per pixel. All data comes from the GPU's main memory.</li>
       <li><b>CUDA + constant memory:</b> the filter weights are kept in a small memory made for values every worker reads.</li>
       <li><b>CUDA + shared tiles:</b> each group of workers first copies the piece of picture it needs into a very fast memory, then works from that.</li>
+      <li><b>MPI (extra experiment):</b> the picture is cut into horizontal strips, one per process, each process filters its strip with OpenMP, and the pieces are joined again. Each strip carries a few extra rows from its neighbours so the seams match.</li>
     </ul>
     <h2 style="margin-top:14px">How the results are checked</h2>
     <p>Every version's output is compared pixel by pixel with the serial output. A version passes only if no pixel differs by 0.0001 or more. Times are the median of the repeats, after one warm-up run that is thrown away.</p>

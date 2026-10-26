@@ -14,6 +14,7 @@ need the CPU and GPU to themselves.
 import argparse
 import io
 import json
+import os
 import pathlib
 import re
 import shutil
@@ -41,6 +42,11 @@ STEP_TIMEOUT_S = 600
 FILTERS = ("gaussian", "sobel", "box")
 OMP_SWEEP = (1, 2, 4, 8, 16)
 BLOCK_SWEEP = ("8x8", "16x16", "32x32")
+K_SWEEP = (3, 7, 11, 15)
+K_SWEEP_IMPLS = ("serial", "omp", "cuda-naive", "cuda-tiled")
+MPI_RANKS = (1, 2, 4, 8, 16)
+MPI_BIN = ROOT / "build" / "convox_mpi"
+MPI_LINE = re.compile(r"compute\s+([\d.]+) ms\s+total\s+([\d.]+) ms\s+err\s+(\S+)\s+(PASS|FAIL)")
 CONTENT_TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
                  ".css": "text/css; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg",
                  ".json": "application/json"}
@@ -62,7 +68,8 @@ def machine_info():
     global _info_cache
     if _info_cache is not None:
         return _info_cache
-    info = {"built": CONVOX.exists(), "cpu": "", "gpu": "", "cuda": False, "max_threads": 8}
+    info = {"built": CONVOX.exists(), "cpu": "", "gpu": "", "cuda": False, "max_threads": 8,
+            "mpi": MPI_BIN.exists() and shutil.which("mpirun") is not None}
     if info["built"]:
         out = subprocess.run([str(CONVOX), "info"], capture_output=True, text=True).stdout
         for line in out.splitlines():
@@ -117,6 +124,7 @@ class Job:
         with self.lock:
             self.steps.append({"id": len(self.steps), "label": label, "kind": kind, "impl": spec["impl"],
                                "threads": spec.get("threads", 0), "block": spec.get("block", ""),
+                               "k": spec.get("k", 0), "ranks": spec.get("ranks", 0),
                                "status": "pending", "result": None})
             return self.steps[-1]
 
@@ -177,6 +185,22 @@ def run_convox(job, args, timeout=STEP_TIMEOUT_S):
     return json.loads(lines[-1])
 
 
+def run_mpi(work_path, params, ranks, timeout=STEP_TIMEOUT_S):
+    """One run of the MPI program with `ranks` processes; its single result line is parsed."""
+    cmd = ["mpirun", "--oversubscribe", "--bind-to", "none", "-np", str(ranks), str(MPI_BIN), "-i", str(work_path),
+           "-k", str(params["k"]), "--filter", params["filter"], "--reps", str(params["reps"]), "--local", "omp",
+           "--no-csv"]
+    if hasattr(os, "geteuid") and os.geteuid() == 0:  # containers run as root; Open MPI refuses unless told
+        cmd.insert(1, "--allow-run-as-root")
+    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    m = MPI_LINE.search(proc.stdout)
+    if not m:
+        raise RuntimeError((proc.stderr.strip() or proc.stdout.strip() or f"exit code {proc.returncode}")[:300])
+    compute, total, err, verdict = float(m.group(1)), float(m.group(2)), float(m.group(3)), m.group(4)
+    return {"impl": "mpi-omp", "ranks": ranks, "kernel_ms": compute, "total_ms": total, "h2d_ms": 0.0, "d2h_ms": 0.0,
+            "max_abs_err": err, "pass": verdict == "PASS"}
+
+
 def worker(job, work_path, params):
     global _current
     info = machine_info()
@@ -198,17 +222,27 @@ def worker(job, work_path, params):
         sweeps += [(f"{impl}-{b}", f"CUDA block {b}: {impl.replace('cuda-', '')}", {"impl": impl, "block": b},
                     "block_sweep") for impl in ("cuda-naive", "cuda-tiled") for b in BLOCK_SWEEP]
 
+    if p["k_sweep"]:
+        sweeps += [(f"{impl}-k{k}", f"Filter size {k}×{k}: {impl.replace('cuda-', 'CUDA ')}", {"impl": impl, "k": k,
+                    **({"threads": p["threads"]} if impl == "omp" else {}), **({"block": "16x16"} if impl.startswith("cuda") else {})},
+                    "k_sweep") for k in K_SWEEP for impl in K_SWEEP_IMPLS if info["cuda"] or not impl.startswith("cuda")]
+    if p["mpi_sweep"] and info["mpi"]:
+        sweeps += [(f"mpi-{n}", f"MPI, {n} process{'es' if n > 1 else ''}", {"impl": "mpi-omp", "ranks": n}, "mpi_sweep")
+                   for n in MPI_RANKS]
+
     display_impl = "cuda-tiled" if info["cuda"] else "omp"
     steps = [(job.add_step(label, "main", spec), key, spec, False) for key, label, spec in plan]
     steps += [(job.add_step(label, kind, spec), key, spec, True) for key, label, spec, kind in sweeps]
     try:
         for step, key, spec, is_sweep in steps:
-            ident = (spec["impl"], spec.get("threads", 0), spec.get("block", ""))
+            ident = (spec["impl"], spec.get("threads", 0), spec.get("block", ""), spec.get("k", p["k"]), spec.get("ranks", 0))
             if ident in memo:  # same configuration already measured in this job
                 job.set_step(step, "done", dict(memo[ident], reused=True))
                 continue
             job.set_step(step, "running")
             args = base + ["--impl", spec["impl"]]
+            if "k" in spec:
+                args[args.index("-k") + 1] = str(spec["k"])
             if "threads" in spec:
                 args += ["--threads", str(spec["threads"])]
             if "block" in spec:
@@ -220,7 +254,7 @@ def worker(job, work_path, params):
                 if p["filter"] == "sobel":
                     args += ["--save-mode", "abs"]
             try:
-                result = run_convox(job, args)
+                result = run_mpi(work_path, p, spec["ranks"]) if "ranks" in spec else run_convox(job, args)
             except subprocess.TimeoutExpired:
                 job.set_step(step, "failed", {"error": "timed out"})
                 continue
@@ -281,6 +315,7 @@ def parse_params(query):
             "threads": integer("threads", machine_info()["max_threads"], 1, 64),
             "maxdim": integer("maxdim", 0, 0, 20000),
             "omp_sweep": one("omp_sweep", "0") == "1", "block_sweep": one("block_sweep", "0") == "1",
+            "k_sweep": one("k_sweep", "0") == "1", "mpi_sweep": one("mpi_sweep", "0") == "1",
             "sample": one("sample", "")}
 
 

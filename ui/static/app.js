@@ -85,6 +85,7 @@
     th.value = info.max_threads;
 
     if (!info.cuda) $("#block-check").classList.add("hidden");
+    if (!info.mpi) $("#mpi-check").classList.add("hidden");
 
     const plots = $("#plots");
     info.plots.forEach((name) => {
@@ -167,6 +168,8 @@
       maxdim: $("#maxdim").value,
       omp_sweep: $("#omp_sweep").checked ? 1 : 0,
       block_sweep: $("#block_sweep").checked && state.info.cuda ? 1 : 0,
+      k_sweep: $("#k_sweep").checked ? 1 : 0,
+      mpi_sweep: $("#mpi_sweep").checked && state.info.mpi ? 1 : 0,
     });
     let body = null;
     if (state.mode === "sample") {
@@ -336,6 +339,14 @@
     const blk = job.steps.filter((s) => s.kind === "block_sweep" && s.status === "done" && s.result).map((s) => s.result);
     $("#chart-block").classList.toggle("hidden", !blk.length);
     if (blk.length) $("#chart-block").innerHTML = blockChart(blk);
+
+    const ks = job.steps.filter((s) => s.kind === "k_sweep" && s.status === "done" && s.result).map((s) => Object.assign({ k: s.k }, s.result));
+    $("#chart-k").classList.toggle("hidden", !ks.length);
+    if (ks.length) $("#chart-k").innerHTML = kChart(ks);
+
+    const mpi = job.steps.filter((s) => s.kind === "mpi_sweep" && s.status === "done" && s.result).map((s) => s.result);
+    $("#chart-mpi").classList.toggle("hidden", !mpi.length);
+    if (mpi.length) $("#chart-mpi").innerHTML = mpiChart(mpi);
   }
 
   // --------------------------------------------------------------- charts
@@ -448,6 +459,47 @@
     s += `</svg>`;
     return `<h3>GPU thread-block shape (computing time only)</h3><p class="small muted">Shorter is better. The shape of each group of GPU workers changes the speed.</p>` + s +
       `<div class="legend"><span><i style="background:${IMPL["cuda-naive"].color}"></i>CUDA naive</span><span><i style="background:${IMPL["cuda-tiled"].color}"></i>CUDA + shared tiles</span></div>`;
+  }
+
+  function kChart(rows) {
+    const impls = Object.keys(IMPL).filter((i) => rows.some((r) => r.impl === i));
+    const ks = [...new Set(rows.map((r) => r.k))].sort((a, b) => a - b);
+    const val = (i, k) => { const r = rows.find((x) => x.impl === i && x.k === k); return r ? r.kernel_ms : null; };
+    const all = rows.map((r) => r.kernel_ms).filter((v) => v > 0);
+    const lo = Math.pow(10, Math.floor(Math.log10(Math.min(...all)))), hi = Math.max(Math.pow(10, Math.ceil(Math.log10(Math.max(...all)))), lo * 10);
+    const W = 640, H = 330, L = 64, R = 24, T = 14, B = 44;
+    const X = (k) => L + ((k - ks[0]) / Math.max(ks[ks.length - 1] - ks[0], 1)) * (W - L - R);
+    const Y = (v) => H - B - ((Math.log10(v) - Math.log10(lo)) / (Math.log10(hi) - Math.log10(lo))) * (H - T - B);
+    let s = svgOpen(W, H);
+    for (let v = lo; v <= hi * 1.001; v *= 10) s += `<line class="grid" x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}"/><text class="muted" x="${L - 8}" y="${Y(v) + 4}" font-size="11" text-anchor="end">${fmtMs(v)}</text>`;
+    ks.forEach((k) => (s += `<text class="muted" x="${X(k)}" y="${H - 22}" font-size="11" text-anchor="middle">${k} × ${k}</text>`));
+    s += `<text class="muted" x="${(L + W - R) / 2}" y="${H - 4}" font-size="12" text-anchor="middle">filter size</text>`;
+    impls.forEach((i) => {
+      const pts = ks.map((k) => [k, val(i, k)]).filter((p) => p[1] > 0);
+      s += `<polyline fill="none" stroke="${IMPL[i].color}" stroke-width="2.5" points="${pts.map((p) => `${X(p[0])},${Y(p[1])}`).join(" ")}"/>`;
+      pts.forEach((p) => (s += `<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="4" fill="${IMPL[i].color}"/>`));
+    });
+    s += `</svg>`;
+    const legend = impls.map((i) => `<span><i style="background:${IMPL[i].color}"></i>${IMPL[i].name}</span>`).join("");
+    return `<h3>Time against filter size (computing only)</h3><p class="small muted">Lower is better. Bigger filters mean more work per pixel. The scale is logarithmic: each gridline is 10 times the one below.</p>` + s + `<div class="legend">${legend}</div>`;
+  }
+
+  function mpiChart(rows) {
+    const pts = rows.slice().sort((a, b) => a.ranks - b.ranks);
+    const W = 640, H = 300, L = 56, R = 16, T = 22, B = 46;
+    const ticks = niceTicks(Math.max(...pts.map((p) => p.total_ms)) * 1.1), top = ticks[ticks.length - 1];
+    const Y = (v) => H - B - (v / top) * (H - T - B);
+    const gw = (W - L - R) / pts.length, bw = Math.min(54, gw * 0.6);
+    let s = svgOpen(W, H);
+    ticks.forEach((v) => (s += `<line class="grid" x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}"/><text class="muted" x="${L - 8}" y="${Y(v) + 4}" font-size="11" text-anchor="end">${fmtMs(v)}</text>`));
+    pts.forEach((p, i) => {
+      const cx = L + gw * i + gw / 2, base = pts[0].total_ms;
+      s += `<rect x="${cx - bw / 2}" y="${Y(p.total_ms)}" width="${bw}" height="${H - B - Y(p.total_ms)}" fill="#7A5195" rx="2"/>`;
+      s += `<text x="${cx}" y="${Y(p.total_ms) - 6}" font-size="11" font-weight="600" text-anchor="middle">${fmtMs(p.total_ms)}${i ? " · " + fmtX(base / p.total_ms) : ""}</text>`;
+      s += `<text x="${cx}" y="${H - 24}" font-size="13" text-anchor="middle">${p.ranks}</text>`;
+    });
+    s += `<text class="muted" x="${(L + W - R) / 2}" y="${H - 6}" font-size="12" text-anchor="middle">MPI processes</text></svg>`;
+    return `<h3>MPI: image split across processes</h3><p class="small muted">Whole job, including sending the strips out and collecting them back. The multiplier is the gain over 1 process. All processes share this one computer's CPU, so this shows how the method behaves, not what a real cluster would do.</p>` + s;
   }
 
   $("#chart-time").addEventListener("click", (e) => {
