@@ -10,3 +10,5 @@ __pycache__/
 .venv/
 .vscode/
 !data/images/images.csv
+results/*.log
+results/quick/
