@@ -1,0 +1,11 @@
+build/
+*.o
+*.exe
+*.out
+results/raw/*
+results/plots/*
+data/images/*
+!**/.gitkeep
+__pycache__/
+.venv/
+.vscode/
