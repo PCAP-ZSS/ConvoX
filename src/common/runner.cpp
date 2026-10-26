@@ -7,11 +7,22 @@
 #include "openmp/openmp.h"
 #include "serial/serial.h"
 
+#ifdef CONVOX_HAVE_CUDA
+#include "cuda/conv_cuda.h"
+#endif
+
 bool impl_available(const std::string& impl) {
-    return impl == "serial" || impl == "omp";
+    if (impl == "serial" || impl == "omp") return true;
+#ifdef CONVOX_HAVE_CUDA
+    if (is_cuda_impl(impl)) return cuda_available();
+#endif
+    return false;
 }
 
 Config normalized(Config cfg) {
+#ifdef CONVOX_HAVE_CUDA
+    if (is_cuda_impl(cfg.impl) && cfg.block_x <= 0 && cfg.block_y <= 0) cfg.block_x = cfg.block_y = 16;
+#endif
     if (cfg.impl == "omp") {
         if (cfg.threads <= 0) cfg.threads = omp_get_max_threads();
         if (cfg.schedule.empty()) cfg.schedule = "static";
@@ -37,6 +48,9 @@ Timing run_once(const Config& cfg, const Image& in, const Filter& f, Image& out)
         double t = sw.ms();
         return {t, 0, 0, t};
     }
+#ifdef CONVOX_HAVE_CUDA
+    if (is_cuda_impl(cfg.impl)) return convolve_cuda(in, f, cfg, out);
+#endif
     throw std::runtime_error("implementation '" + cfg.impl + "' is not available in this build");
 }
 
@@ -57,6 +71,13 @@ Row execute(const Config& requested, const Image& in, const Filter& f, const Ima
 #endif
     r.med = b.median;
     r.val = validate(ref, out);
+#ifdef CONVOX_HAVE_CUDA
+    if (is_cuda_impl(cfg.impl)) {
+        CudaLaunchInfo li = cuda_launch_info(cfg, f.k);
+        r.smem_bytes = li.smem_bytes;
+        r.occupancy = li.occupancy;
+    }
+#endif
     if (reps_out) *reps_out = b.reps;
     return r;
 }

@@ -36,18 +36,18 @@ Each phase is a separable module (code, data and write-up), so the project can l
 
 ## Phase 3: Naive CUDA (Week 3)
 
-- [ ] 3.1 Error-check macro, device query, buffer allocation and transfers.
-- [ ] 3.2 Naive kernel with a bounds guard, validated against serial.
-- [ ] 3.3 Event-based timing: H2D, kernel and D2H separately, plus host-side total.
-- [ ] 3.4 Block sweep: 8x8, 16x16, 32x32.
+- [x] 3.1 Error-check macro, device query, buffer allocation and transfers.
+- [x] 3.2 Naive kernel with a bounds guard, validated against serial.
+- [x] 3.3 Event-based timing: H2D, kernel and D2H separately, plus host-side total.
+- [x] 3.4 Block sweep: 8x8, 16x16, 32x32.
 - Done when: naive CUDA passes validation and the kernel-vs-transfer split is recorded.
 
 ## Phase 4: Optimised CUDA (Week 4)
 
-- [ ] 4.1 `cuda-const`: filter in `__constant__` memory. Validate, then measure on its own.
-- [ ] 4.2 `cuda-tiled`: shared-memory tile with halo, `__syncthreads()`, compute from shared memory. Validate.
-- [ ] 4.3 Edge cases: image sizes not divisible by the block, K=15 at T=32 shared-memory footprint.
-- [ ] 4.4 Nsight Compute runs for naive vs tiled: DRAM throughput, occupancy. Record in the CSV or report.
+- [x] 4.1 `cuda-const`: filter in `__constant__` memory. Validate, then measure on its own.
+- [x] 4.2 `cuda-tiled`: shared-memory tile with halo, `__syncthreads()`, compute from shared memory. Validate.
+- [x] 4.3 Edge cases: image sizes not divisible by the block, K=15 at T=32 shared-memory footprint.
+- [ ] 4.4 Nsight Compute runs for naive vs tiled: DRAM throughput, occupancy. Record in the CSV or report. BLOCKED: `ncu` fails with ERR_NVGPUCTRPERM; needs Windows NVIDIA Control Panel > Desktop > Enable Developer Settings > Manage GPU Performance Counters > allow all users. Fallback: theoretical occupancy and analytical traffic (already recorded).
 - Done when: three CUDA variants all pass validation and the profiler numbers are saved.
 
 ## Phase 5: Sweep and analysis (Weeks 5-6)
