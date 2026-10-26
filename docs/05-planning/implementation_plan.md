@@ -19,10 +19,10 @@ Each phase is a separable module (code, data and write-up), so the project can l
 - [x] 1.2 Filter generator: Gaussian, Sobel, Box for odd K from 3 to 15.
 - [x] 1.3 Serial convolution with zero-padding, built `-O2` with no vectorisation. Border mode switch for clamp-to-edge.
 - [x] 1.4 Validator: max-abs and RMS error, pass at < 1e-4.
-- [ ] 1.5 Timing harness: warm-up plus 10 reps, median, `steady_clock`.
-- [ ] 1.6 CSV writer for `results.csv` and `reps.csv`, and environment capture.
-- [ ] 1.7 CLI: `convox run` and `convox info` for the serial path, with `--save-image`.
-- [ ] 1.8 Unit checks: delta filter returns the input, box filter on a constant image returns that constant.
+- [x] 1.5 Timing harness: warm-up plus 10 reps, median, `steady_clock`.
+- [x] 1.6 CSV writer for `results.csv` and `reps.csv`, and environment capture.
+- [x] 1.7 CLI: `convox run` and `convox info` for the serial path, with `--save-image`.
+- [x] 1.8 Unit checks: delta filter returns the input, box filter on a constant image returns that constant.
 - Done when: serial blur and Sobel outputs look right, and a row lands in `results.csv`.
 
 ## Phase 2: OpenMP (Week 2)

@@ -23,7 +23,7 @@ ConvoX has no graphical interface. Its user experience is the command line, the 
 
 ## 3. CLI design
 
-- Subcommands: `run`, `sweep`, `info`. Long flags only, with short aliases for `--image`, `--k` and `--impl`.
+- Subcommands: `run`, `sweep`, `info`. Long flags, with short aliases `-i` (`--image`) and `-k` (`--k`).
 - Every flag has a default, and `--help` shows an example for each subcommand.
 - Invalid input is rejected before any work starts. Example: `error: K must be odd and between 3 and 15 (got 8)`.
 - Exit codes: 0 success, 1 validation failure, 2 bad arguments, 3 missing device or library.
