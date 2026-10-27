@@ -20,18 +20,19 @@ HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "analysis"))
 import common  # noqa: E402
 
-OUT = HERE / "figures"
+import os
+F = 2.0 if os.environ.get("POSTER") else 1.0
+OUT = HERE / ("poster_figures" if F != 1.0 else "figures")
 OUT.mkdir(exist_ok=True)
 C = common.COLORS
 IMG = "img03_8k"
 
 plt.rcParams.update({
-    "font.family": "serif", "font.serif": ["Times New Roman", "DejaVu Serif"], "font.size": 7.5,
-    "axes.labelsize": 7.5, "axes.titlesize": 7.5, "legend.fontsize": 6.5, "xtick.labelsize": 7, "ytick.labelsize": 7,
+    "font.family": "serif", "font.serif": ["Times New Roman", "DejaVu Serif"], "font.size": 7.5 * F, "axes.labelsize": 7.5 * F, "axes.titlesize": 7.5 * F, "legend.fontsize": 6.5 * F, "xtick.labelsize": 7 * F, "ytick.labelsize": 7 * F,
     "axes.grid": True, "grid.alpha": 0.3, "grid.linewidth": 0.4, "axes.spines.top": False, "axes.spines.right": False,
-    "axes.linewidth": 0.6, "figure.dpi": 100, "savefig.dpi": 300,
+    "axes.linewidth": 0.6 * F, "figure.dpi": 100, "savefig.dpi": 300,
 })
-W = 3.45
+W = 3.45 * F
 
 df, raw = common.load()
 d8 = df[df["image_id"] == IMG]
@@ -45,12 +46,12 @@ def save(fig, name):
 
 def fig_omp():
     d = common.omp_thread_rows(d8)
-    fig, ax = plt.subplots(figsize=(W, 2.4))
+    fig, ax = plt.subplots(figsize=(W, 2.4 * F))
     th = sorted(d["threads"].unique())
-    ax.plot(th, th, "--", color="#999999", lw=0.9, label="ideal")
+    ax.plot(th, th, "--", color="#999999", lw=0.9 * F, label="ideal")
     for k, c in ((3, "#9ecae1"), (7, "#4292c6"), (15, "#08306b")):
         s = d[d["k"] == k].sort_values("threads")
-        ax.plot(s["threads"], s["speedup"], marker="s", ms=3, lw=1.1, color=c, label=f"K={k}")
+        ax.plot(s["threads"], s["speedup"], marker="s", ms=3 * F, lw=1.1 * F, color=c, label=f"K={k}")
     ax.set_xticks(th)
     ax.set_xlabel("OpenMP threads")
     ax.set_ylabel("speedup over serial (x)")
@@ -59,7 +60,7 @@ def fig_omp():
 
 
 def fig_block():
-    fig, axes = plt.subplots(1, 3, figsize=(W, 1.9))
+    fig, axes = plt.subplots(1, 3, figsize=(W, 1.9 * F))
     blocks = [(8, 8), (16, 16), (32, 32)]
     for ax, k in zip(axes, (3, 9, 15)):
         for off, impl in ((-0.2, "cuda-naive"), (0.2, "cuda-tiled")):
@@ -69,7 +70,7 @@ def fig_block():
                 v.append(r["kernel_ms"].iloc[0] if len(r) else np.nan)
             ax.bar(np.arange(3) + off, v, 0.4, color=C[impl], label=impl.replace("cuda-", ""))
         ax.set_xticks(range(3))
-        ax.set_xticklabels(["8x8", "16x16", "32x32"], fontsize=6)
+        ax.set_xticklabels(["8x8", "16x16", "32x32"], fontsize=6 * F)
         ax.set_title(f"K={k}")
         ax.set_ylim(top=ax.get_ylim()[1] * 1.3)
         if k == 3:
@@ -82,10 +83,10 @@ def fig_ratio():
     d = d8[(d8["block_x"] == 16) & (d8["block_y"] == 16)]
     ks = sorted(d["k"].unique())
     g = lambda impl: d[d["impl"] == impl].set_index("k")["kernel_ms"].reindex(ks)
-    fig, ax = plt.subplots(figsize=(W, 2.1))
-    ax.axhline(1, color="#999999", lw=0.8, ls="--")
-    ax.plot(ks, g("cuda-naive") / g("cuda-const"), marker="v", ms=3, color=C["cuda-const"], label="naive / constant")
-    ax.plot(ks, g("cuda-naive") / g("cuda-tiled"), marker="D", ms=3, color=C["cuda-tiled"], label="naive / tiled")
+    fig, ax = plt.subplots(figsize=(W, 2.1 * F))
+    ax.axhline(1, color="#999999", lw=0.8 * F, ls="--")
+    ax.plot(ks, g("cuda-naive") / g("cuda-const"), marker="v", ms=3 * F, color=C["cuda-const"], label="naive / constant")
+    ax.plot(ks, g("cuda-naive") / g("cuda-tiled"), marker="D", ms=3 * F, color=C["cuda-tiled"], label="naive / tiled")
     ax.set_xticks(ks)
     ax.set_xlabel("filter size K")
     ax.set_ylabel("kernel-time ratio (x)")
@@ -95,7 +96,7 @@ def fig_ratio():
 
 def fig_split():
     d = d8[(d8["block_x"] == 16) & (d8["block_y"] == 16)]
-    fig, ax = plt.subplots(figsize=(W, 2.3))
+    fig, ax = plt.subplots(figsize=(W, 2.3 * F))
     labels, x = [], 0
     for k in (3, 9, 15):
         for impl, name in (("cuda-naive", "naive"), ("cuda-const", "const"), ("cuda-tiled", "tiled")):
@@ -108,7 +109,7 @@ def fig_split():
         x += 0.5
     pos = [i + (i // 3) * 0.5 for i in range(9)]
     ax.set_xticks(pos)
-    ax.set_xticklabels(labels, fontsize=5.5)
+    ax.set_xticklabels(labels, fontsize=5.5 * F)
     ax.set_ylabel("time (ms)")
     ax.legend(loc="upper left", ncol=3)
     ax.set_ylim(0, ax.get_ylim()[1] * 1.12)
@@ -116,7 +117,7 @@ def fig_split():
 
 
 def fig_k():
-    fig, ax = plt.subplots(figsize=(W, 2.4))
+    fig, ax = plt.subplots(figsize=(W, 2.4 * F))
     ks = sorted(d8["k"].unique())
     rows = {
         "serial": d8[d8["impl"] == "serial"],
@@ -128,7 +129,7 @@ def fig_k():
     cols = [C["serial"], C["omp"], C["cuda-naive"], C["cuda-const"], C["cuda-tiled"]]
     for (name, r), c in zip(rows.items(), cols):
         s = r.groupby("k")["kernel_ms"].min().reindex(ks)
-        ax.plot(ks, s, marker="o", ms=2.8, lw=1.1, color=c, label=name)
+        ax.plot(ks, s, marker="o", ms=2.8 * F, lw=1.1 * F, color=c, label=name)
     ax.set_yscale("log")
     ax.set_xticks(ks)
     ax.set_xlabel("filter size K")
@@ -143,7 +144,7 @@ def fig_amdahl():
     ceil = [1.11, 1.22, 1.38, 1.67, 1.91, 2.36, 2.58]
     obs = [1.09, 1.19, 1.30, 1.54, 1.71, 2.01, 2.18]
     kern = [6.74, 6.74, 6.62, 8.13, 7.83, 7.78, 8.52]
-    fig, ax = plt.subplots(figsize=(W, 2.2))
+    fig, ax = plt.subplots(figsize=(W, 2.2 * F))
     x = np.arange(len(ks))
     ax.bar(x - 0.27, ceil, 0.27, color="#999999", label="Amdahl ceiling 1/f")
     ax.bar(x, obs, 0.27, color=C["omp"], label="observed end-to-end")
@@ -160,10 +161,10 @@ def fig_amdahl():
 def fig_mpi():
     ranks = [1, 2, 4, 8, 16]
     total = [1580, 790, 427, 345, 341]
-    fig, ax = plt.subplots(figsize=(W, 2.0))
+    fig, ax = plt.subplots(figsize=(W, 2.0 * F))
     ax.bar(range(5), total, 0.6, color="#7A5195")
     for i, t in enumerate(total):
-        ax.text(i, t + 25, f"{t}\n({total[0] / t:.1f}x)" if i else f"{t}", ha="center", fontsize=6)
+        ax.text(i, t + 25, f"{t}\n({total[0] / t:.1f}x)" if i else f"{t}", ha="center", fontsize=6 * F)
     ax.set_xticks(range(5))
     ax.set_xticklabels(ranks)
     ax.set_xlabel("MPI ranks (serial local kernel)")
@@ -173,17 +174,17 @@ def fig_mpi():
 
 
 def fig_arch():
-    fig, ax = plt.subplots(figsize=(W, 3.55))
+    fig, ax = plt.subplots(figsize=(W, 3.55 * F))
     ax.set_xlim(0, 10)
     ax.set_ylim(0, 14.6)
     ax.axis("off")
 
-    def box(x, y, w, h, text, fc="#eef3fa", ec="#34495e", fs=6.3):
-        ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.02,rounding_size=0.15", fc=fc, ec=ec, lw=0.7))
+    def box(x, y, w, h, text, fc="#eef3fa", ec="#34495e", fs=6.3 * F):
+        ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.02,rounding_size=0.15", fc=fc, ec=ec, lw=0.7 * F))
         ax.text(x + w / 2, y + h / 2, text, ha="center", va="center", fontsize=fs, linespacing=1.15)
 
     def arrow(x1, y1, x2, y2):
-        ax.add_patch(FancyArrowPatch((x1, y1), (x2, y2), arrowstyle="-|>", mutation_scale=6, lw=0.7, color="#34495e"))
+        ax.add_patch(FancyArrowPatch((x1, y1), (x2, y2), arrowstyle="-|>", mutation_scale=6 * F, lw=0.7 * F, color="#34495e"))
 
     box(1.5, 13.0, 7, 1.3, "Image loader (stb_image: decode / encode only)\nFilter generator (Gaussian, Sobel, box; K = 3..15)", "#fdf3e1")
     arrow(5, 13.0, 5, 12.35)
